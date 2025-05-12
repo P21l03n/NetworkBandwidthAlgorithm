@@ -1,0 +1,86 @@
+﻿@model BandwidthModel
+
+<div class="container mt-5">
+    <h1 class="mb-4">NetworkBandwidthAlgorithm</h1>
+
+    <form asp-action="Calculate" method="post" class="card p-4 shadow">
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Количество устройств</h3>
+                <div class="form-group">
+                    <label>Wi-Fi устройства:</label>
+                    <input asp-for="WifiDevices" class="form-control" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Zigbee устройства:</label>
+                    <input asp-for="ZigbeeDevices" class="form-control" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Z-Wave устройства:</label>
+                    <input asp-for="ZWaveDevices" class="form-control" min="0">
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h3>Параметры нагрузки</h3>
+                <div class="form-group">
+                    <label>Аудио нагрузка (Кбит/с):</label>
+                    <input asp-for="AudioLoad" class="form-control" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Видео нагрузка (Кбит/с):</label>
+                    <input asp-for="VideoLoad" class="form-control" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Нагрузка управления (Кбит/с):</label>
+                    <input asp-for="ControlLoad" class="form-control" min="0">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Рассчитать</button>
+    </form>
+
+    @if (Model.WifiBandwidth > 0)
+    {
+        <div class="card mt-4 p-4 shadow">
+            <h3>Результаты расчета</h3>
+
+            <div class="alert @(Model.IsOptimal ? "alert-success" : "alert-danger")">
+                <h4>@Model.Status</h4>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">Wi-Fi</div>
+                        <div class="card-body">
+                            <p>Пропускная способность: @Model.WifiBandwidth.ToString("0") Кбит/с</p>
+                            <p>Используется: @(Model.WifiDevices * (Model.AudioLoad + Model.VideoLoad + Model.ControlLoad)) Кбит/с</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-warning">Zigbee</div>
+                        <div class="card-body">
+                            <p>Пропускная способность: @Model.ZigbeeBandwidth.ToString("0") Кбит/с</p>
+                            <p>Используется: @(Model.ZigbeeDevices * Model.LightLoad) Кбит/с</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">Z-Wave</div>
+                        <div class="card-body">
+                            <p>Пропускная способность: @Model.ZWaveBandwidth.ToString("0") Кбит/с</p>
+                            <p>Используется: @(Model.ZWaveDevices * Model.ControlLoad) Кбит/с</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
