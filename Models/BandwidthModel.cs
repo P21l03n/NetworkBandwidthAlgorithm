@@ -1,42 +1,69 @@
-﻿namespace NetworkBandwidthAlgorithm.Models
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace NetworkBandwidthAlgorithm.Models
 {
     public class BandwidthModel
     {
-        public int WifiDevices { get; set; }
-        public int ZigbeeDevices { get; set; }
-        public int ZWaveDevices { get; set; }
+        [Required(ErrorMessage = "Необходимо указать хотя бы одно устройство")]
+        public List<NetworkDevice> Devices { get; set; } = new List<NetworkDevice>();
 
-        public double AudioLoad { get; set; } = 150;
-        public double VideoLoad { get; set; } = 500;
-        public double ControlLoad { get; set; } = 10;
-        public double LightLoad { get; set; } = 5;
+        public List<Protocol> Protocols { get; set; } = new List<Protocol>();
 
-        public double WifiEfficiency { get; set; } = 0.6;
-        public double ZigbeeEfficiency { get; set; } = 0.8;
-        public double ZWaveEfficiency { get; set; } = 0.7;
-
-        public double WifiBandwidth { get; private set; }
-        public double ZigbeeBandwidth { get; private set; }
-        public double ZWaveBandwidth { get; private set; }
-        public bool IsOptimal { get; private set; }
-        public string Status { get; private set; }
+        public double TotalLoad { get; set; }
+        public double TotalCapacity { get; set; }
+        public bool IsOptimal { get; set; }
+        public string Message { get; set; }
 
         public void Calculate()
         {
-            WifiBandwidth = 1000 * WifiEfficiency;
-            ZigbeeBandwidth = 250 * ZigbeeEfficiency;
-            ZWaveBandwidth = 100 * ZWaveEfficiency;
+            TotalLoad = 0;
+            TotalCapacity = 0;
 
-            double wifiLoad = WifiDevices * (AudioLoad + VideoLoad + ControlLoad);
-            double zigbeeLoad = ZigbeeDevices * LightLoad;
-            double zwaveLoad = ZWaveDevices * ControlLoad;
+            foreach (var protocol in Protocols)
+            {
+                protocol.CurrentLoad = 0;
+                protocol.Capacity = protocol.BaseCapacity * protocol.Efficiency;
+            }
 
-            bool wifiOk = wifiLoad <= WifiBandwidth;
-            bool zigbeeOk = zigbeeLoad <= ZigbeeBandwidth;
-            bool zwaveOk = zwaveLoad <= ZWaveBandwidth;
+            foreach (var device in Devices)
+            {
+                var protocol = Protocols.Find(p => p.Name == device.Protocol);
+                if (protocol != null)
+                {
+                    protocol.CurrentLoad += device.Load;
+                    TotalLoad += device.Load;
+                }
+            }
 
-            IsOptimal = wifiOk && zigbeeOk && zwaveOk;
-            Status = IsOptimal ? "Оптимальная нагрузка" : "Перегрузка сети!";
+            foreach (var protocol in Protocols)
+            {
+                TotalCapacity += protocol.Capacity;
+            }
+
+            IsOptimal = TotalLoad <= TotalCapacity;
+            Message = IsOptimal ? "Оптимальная нагрузка" : "Перегрузка сети!";
         }
+    }
+
+    public class NetworkDevice
+    {
+        [Required(ErrorMessage = "Выберите устройство")]
+        public string Name { get; set; }
+
+        [Required(ErrorMessage = "Выберите протокол")]
+        public string Protocol { get; set; }
+
+        [Range(0.1, double.MaxValue, ErrorMessage = "Нагрузка должна быть больше 0")]
+        public double Load { get; set; }
+    }
+
+    public class Protocol
+    {
+        public string Name { get; set; }
+        public double BaseCapacity { get; set; } // Кбит/с
+        public double Efficiency { get; set; } = 0.7;
+        public double Capacity { get; set; }
+        public double CurrentLoad { get; set; }
     }
 }

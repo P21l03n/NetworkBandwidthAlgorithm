@@ -1,86 +1,164 @@
-﻿@model BandwidthModel
+﻿@model NetworkBandwidthAlgorithm.Models.BandwidthModel
+@{
+    ViewData["Title"] = "Калькулятор пропускной способности";
+}
 
-<div class="container mt-5">
-    <h1 class="mb-4">NetworkBandwidthAlgorithm</h1>
+<div class="container">
+    <h1 class="mb-4">@ViewData["Title"]</h1>
 
-    <form asp-action="Calculate" method="post" class="card p-4 shadow">
-        <div class="row">
-            <div class="col-md-6">
-                <h3>Количество устройств</h3>
-                <div class="form-group">
-                    <label>Wi-Fi устройства:</label>
-                    <input asp-for="WifiDevices" class="form-control" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Zigbee устройства:</label>
-                    <input asp-for="ZigbeeDevices" class="form-control" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Z-Wave устройства:</label>
-                    <input asp-for="ZWaveDevices" class="form-control" min="0">
-                </div>
+    <form asp-action="Calculate" method="post" id="calculation-form">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Настройки протоколов</h5>
             </div>
-
-            <div class="col-md-6">
-                <h3>Параметры нагрузки</h3>
-                <div class="form-group">
-                    <label>Аудио нагрузка (Кбит/с):</label>
-                    <input asp-for="AudioLoad" class="form-control" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Видео нагрузка (Кбит/с):</label>
-                    <input asp-for="VideoLoad" class="form-control" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Нагрузка управления (Кбит/с):</label>
-                    <input asp-for="ControlLoad" class="form-control" min="0">
-                </div>
+            <div class="card-body">
+                @for (int i = 0; i < Model.Protocols.Count; i++)
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-4 font-weight-bold">
+                            @Model.Protocols[i].Name:
+                            <input type="hidden" asp-for="Protocols[i].Name" />
+                            <input type="hidden" asp-for="Protocols[i].BaseCapacity" />
+                            <input type="hidden" asp-for="Protocols[i].Efficiency" />
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="@Model.Protocols[i].BaseCapacity" readonly>
+                                <div class="input-group-append">
+                                    <span class="input-group-text">Кбит/с</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="@Model.Protocols[i].Efficiency" readonly>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-3">Рассчитать</button>
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Добавить устройства</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <select id="device-preset-select" class="form-control">
+                        <option value="">-- Выберите устройство --</option>
+                        @foreach (var preset in ViewBag.DevicePresets)
+                        {
+                            <option value="@preset.Name" data-protocol="@preset.Protocol" data-load="@preset.TypicalLoad">
+                                @preset.Name (@preset.Protocol, @preset.TypicalLoad Кбит/с)
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <div id="devices-container">
+                    @for (int i = 0; i < Model.Devices.Count; i++)
+                    {
+                        <div class="row mb-3 device-entry">
+                            <div class="col-md-5">
+                                <input type="text" asp-for="Devices[i].Name" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" asp-for="Devices[i].Protocol" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <input asp-for="Devices[i].Load" class="form-control">
+                                <span asp-validation-for="Devices[i].Load" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-danger btn-sm remove-device">×</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <button type="button" id="add-device" class="btn btn-outline-primary mt-2">
+                    <i class="fas fa-plus"></i> Добавить устройство
+                </button>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg">
+                Рассчитать
+            </button>
+        </div>
     </form>
-
-    @if (Model.WifiBandwidth > 0)
-    {
-        <div class="card mt-4 p-4 shadow">
-            <h3>Результаты расчета</h3>
-
-            <div class="alert @(Model.IsOptimal ? "alert-success" : "alert-danger")">
-                <h4>@Model.Status</h4>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header bg-info text-white">Wi-Fi</div>
-                        <div class="card-body">
-                            <p>Пропускная способность: @Model.WifiBandwidth.ToString("0") Кбит/с</p>
-                            <p>Используется: @(Model.WifiDevices * (Model.AudioLoad + Model.VideoLoad + Model.ControlLoad)) Кбит/с</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header bg-warning">Zigbee</div>
-                        <div class="card-body">
-                            <p>Пропускная способность: @Model.ZigbeeBandwidth.ToString("0") Кбит/с</p>
-                            <p>Используется: @(Model.ZigbeeDevices * Model.LightLoad) Кбит/с</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header bg-success text-white">Z-Wave</div>
-                        <div class="card-body">
-                            <p>Пропускная способность: @Model.ZWaveBandwidth.ToString("0") Кбит/с</p>
-                            <p>Используется: @(Model.ZWaveDevices * Model.ControlLoad) Кбит/с</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Добавление устройства из пресета
+            $('#device-preset-select').change(function() {
+                var selected = $(this).find('option:selected');
+                if (selected.val()) {
+                    var index = $('#devices-container .device-entry').length;
+                    var html = `
+                        <div class="row mb-3 device-entry">
+                            <div class="col-md-5">
+                                <input type="text" name="Devices[${index}].Name" class="form-control" value="${selected.val()}" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" name="Devices[${index}].Protocol" class="form-control" value="${selected.data('protocol')}" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" step="0.1" min="0.1" name="Devices[${index}].Load" class="form-control" value="${selected.data('load')}" required>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-danger btn-sm remove-device">×</button>
+                            </div>
+                        </div>`;
+                    $('#devices-container').append(html);
+                    $(this).val('');
+                }
+            });
+
+            // Удаление устройства
+            $(document).on('click', '.remove-device', function() {
+                $(this).closest('.device-entry').remove();
+                // Переиндексация оставшихся элементов
+                $('#devices-container .device-entry').each(function(index) {
+                    $(this).find('input').each(function() {
+                        var name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/\[\d+\]/, `[${index}]`));
+                        }
+                    });
+                });
+            });
+
+            // Кнопка "Добавить устройство"
+            $('#add-device').click(function() {
+                var index = $('#devices-container .device-entry').length;
+                var html = `
+                    <div class="row mb-3 device-entry">
+                        <div class="col-md-5">
+                            <input type="text" name="Devices[${index}].Name" class="form-control" placeholder="Название" required>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="Devices[${index}].Protocol" class="form-control" required>
+                                <option value="">-- Выберите --</option>
+        @foreach (var protocol in ViewBag.Protocols)
+        {
+                                            <option value="@protocol.Name">@protocol.Name</option>
+        }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" step="0.1" min="0.1" name="Devices[${index}].Load" class="form-control" placeholder="Нагрузка" required>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" class="btn btn-danger btn-sm remove-device">×</button>
+                        </div>
+                    </div>`;
+                $('#devices-container').append(html);
+            });
+        });
+    </script>
+}

@@ -1,0 +1,57 @@
+﻿@page
+@model NetworkBandwidthAlgorithm.Models.CalculationResult
+@{
+    ViewData["Title"] = "Результаты расчета";
+}
+
+<div class="container mt-5">
+    <h1 class="mb-4">@ViewData["Title"]</h1>
+
+    @if (Model.Model.IsOptimal)
+    {
+        <div class="alert alert-success">
+            <h4>@Model.Model.Message</h4>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <h4>@Model.Model.Message</h4>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8">
+            <canvas id="bandwidthChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <a asp-action="Index" class="btn btn-primary mt-4">Новый расчет</a>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js "></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const ctx = document.getElementById('bandwidthChart').getContext('2d');
+                const chartData = @Html.Raw(Model.ChartData);
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Error initializing chart:', e);
+            }
+        });
+    </script>
+}
